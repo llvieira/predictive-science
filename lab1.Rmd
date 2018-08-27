@@ -1,0 +1,73 @@
+---
+title: "predictive-science"
+author: "Lucas Vieira"
+date: "27 de agosto de 2018"
+output: html_document
+---
+
+## Importando biblioteca e os dados
+
+```{r}
+library(tidyverse)
+library(gridExtra)
+dados <- readr::read_csv('dadosCEAP.csv')
+dados %>% glimpse()
+```
+
+## Primeira questão
+
+```{r}
+# os cinco deputados que mais gastaram
+maisGastadores <- dados %>% group_by(nomeParlamentar) %>% 
+  filter(valorLíquido > 0) %>%
+  summarise(totalDeGastos = sum(valorLíquido)) %>% 
+  arrange(-totalDeGastos) %>%
+  slice(1:5)
+
+graficoMaisGastadores <- maisGastadores %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + 
+  geom_col(width = 0.7) + coord_flip()
+
+# os cinco deputados que menos gastaram
+menosGastadores <- dados %>% group_by(nomeParlamentar) %>% 
+  filter(valorLíquido > 0) %>%
+  summarise(totalDeGastos = sum(valorLíquido)) %>% 
+  arrange(totalDeGastos) %>%
+  slice(1:5)
+
+graficoMenosGastadores <- menosGastadores %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y = totalDeGastos, fill=nomeParlamentar)) + 
+  geom_col(width = 0.7) + coord_flip()
+
+grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
+```
+
+## Segunda questão
+
+```{r}
+# os cinco deputados que mais gastaram no exterior
+maisGastadoresNoExterior <- dados %>% group_by(nomeParlamentar) %>% 
+  filter(tipoDocumento == 2) %>%
+  summarise(totalDeGastos = sum(valorLíquido)) %>% 
+  arrange(-totalDeGastos) %>%
+  slice(1:5)
+
+graficoMaisGastadores <- maisGastadoresNoExterior %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + 
+  geom_col(width = 0.7) + coord_flip()
+
+# os cinco deputados que menos gastaram no exterior
+menosGastadoresNoExterior <- dados %>% group_by(nomeParlamentar) %>% 
+  filter(tipoDocumento == 2) %>%
+  summarise(totalDeGastos = sum(valorLíquido)) %>% 
+  arrange(totalDeGastos) %>%
+  slice(1:5)
+
+graficoMenosGastadores <- menosGastadoresNoExterior %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + 
+  geom_col(width = 0.7) + coord_flip()
+
+grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
+```
+
+## Terceira questão
+
+```{r}
+
+```
