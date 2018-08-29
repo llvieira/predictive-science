@@ -16,6 +16,16 @@ library(gridExtra)
 ```{r}
 dados <- readr::read_csv('dadosCEAP.csv')
 dados %>% glimpse()
+
+limiteMensal <- readr::read_csv('limiteMensalCEAP.csv')
+limiteMensal %>% glimpse()
+
+dados %>% full_join(limiteMensal, by = c('sgUF' = 'UF')) -> dados
+```
+
+```{r}
+# Removendo notações cientificas e usando apenas decimais
+options(scipen = 999)
 ```
 
 ## Primeira questão
@@ -28,8 +38,7 @@ maisGastadores <- dados %>% group_by(nomeParlamentar) %>%
   arrange(-totalDeGastos) %>%
   slice(1:5)
 
-graficoMaisGastadores <- maisGastadores %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + 
-  geom_col(width = 0.7) + coord_flip()
+graficoMaisGastadores <- maisGastadores %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + labs(x='Deputados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Deputados'))
 
 # os cinco deputados que menos gastaram
 menosGastadores <- dados %>% group_by(nomeParlamentar) %>% 
@@ -38,8 +47,7 @@ menosGastadores <- dados %>% group_by(nomeParlamentar) %>%
   arrange(totalDeGastos) %>%
   slice(1:5)
 
-graficoMenosGastadores <- menosGastadores %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y = totalDeGastos, fill=nomeParlamentar)) + 
-  geom_col(width = 0.7) + coord_flip()
+graficoMenosGastadores <- menosGastadores %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y = totalDeGastos, fill=nomeParlamentar)) + labs(x='Deputados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Deputados'))
 
 grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 ```
@@ -48,24 +56,22 @@ grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 
 ```{r}
 # os cinco deputados que mais gastaram no exterior
-maisGastadoresNoExterior <- dados %>% group_by(nomeParlamentar) %>% 
+maisGastadoresNoExterior <- dados %>% group_by(sgUF) %>% 
   filter(tipoDocumento == 2) %>%
   summarise(totalDeGastos = sum(valorLíquido)) %>% 
   arrange(-totalDeGastos) %>%
   slice(1:5)
 
-graficoMaisGastadores <- maisGastadoresNoExterior %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + 
-  geom_col(width = 0.7) + coord_flip()
+graficoMaisGastadores <- maisGastadoresNoExterior %>% ggplot(aes(x = reorder(sgUF, totalDeGastos), y=totalDeGastos, fill=sgUF)) + labs(x='Estados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Estados'))
 
 # os cinco deputados que menos gastaram no exterior
-menosGastadoresNoExterior <- dados %>% group_by(nomeParlamentar) %>% 
+menosGastadoresNoExterior <- dados %>% group_by(sgUF) %>% 
   filter(tipoDocumento == 2) %>%
   summarise(totalDeGastos = sum(valorLíquido)) %>% 
   arrange(totalDeGastos) %>%
   slice(1:5)
 
-graficoMenosGastadores <- menosGastadoresNoExterior %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=nomeParlamentar)) + 
-  geom_col(width = 0.7) + coord_flip()
+graficoMenosGastadores <- menosGastadoresNoExterior %>% ggplot(aes(x = reorder(sgUF, totalDeGastos), y=totalDeGastos, fill=sgUF)) + labs(x='Estados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Estados'))
 
 grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 ```
@@ -73,13 +79,36 @@ grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 ## Terceira questão
 
 ```{r}
+estadosMaisGasto <- dados %>% group_by(sgPartido) %>%
+  filter(sgUF == 'PB') %>%
+  summarise(totalGasto = sum(valorLíquido)) %>% 
+  arrange(-totalGasto) %>% 
+  slice(1:5)
 
+graficoEstadosMaisGasto <- estadosMaisGasto %>% ggplot(aes(x = reorder(sgPartido, totalGasto), y = totalGasto, fill = sgPartido)) + labs(x='Partidos', y='Gasto total', title='Estados onde parlamentares mais usam CEAP') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Partidos'))
+
+estadosMenosGasto <- dados %>% group_by(sgPartido) %>%
+  filter(sgUF == 'PB') %>%
+  summarise(totalGasto = sum(valorLíquido)) %>% 
+  arrange(totalGasto) %>% 
+  slice(1:5)
+
+graficoEstadosMenosGasto <- estadosMenosGasto %>% ggplot(aes(x = reorder(sgPartido, totalGasto), y = totalGasto, fill = sgPartido)) + labs(x='Partidos', y='Gasto total', title='Estados onde parlamentares menos usam CEAP') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Partidos'))
+
+grid.arrange(graficoEstadosMaisGasto, graficoEstadosMenosGasto, nrow = 2)
 ```
 
 ## Quarta questão
 
 ```{r}
+ultrapassa_limite <- dados %>% group_by(nomeParlamentar, limite_mensal) %>% 
+  summarise(totalGasto = sum(valorLíquido)) %>% 
+  filter(totalGasto > limite_mensal) %>% 
+  arrange(-totalGasto) %>% 
+  ungroup() %>% 
+  slice(1:5)
 
+ultrapassa_limite %>% ggplot(aes(x = reorder(nomeParlamentar, totalGasto), y = totalGasto, fill = nomeParlamentar)) + labs(x='Deputados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Deputados'))
 ```
 
 ## Quinta questão
@@ -89,14 +118,20 @@ grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 estados <-dados %>% group_by(sgUF) %>%
   filter(tipoDespesa == 'Emissão Bilhete Aéreo') %>%
   summarise(totalGasto = sum(valorLíquido)) %>%
-  arrange(totalGasto) %>%
+  arrange(-totalGasto) %>%
   slice(1:5)
 
-estados %>% ggplot(aes(x = reorder(sgUF, totalGasto), y = totalGasto, fill = sgUF)) + xlab('Estados') + ylab('Gasto total') + geom_col(width = 0.7) + coord_flip()
+estados %>% ggplot(aes(x = reorder(sgUF, totalGasto), y = totalGasto, fill = sgUF)) + labs(x='Estados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Estados'))
 ```
 
 ## Sexta questão
 
 ```{r}
+estados <-dados %>% group_by(sgUF) %>%
+  filter(tipoDespesa == 'Emissão Bilhete Aéreo') %>%
+  summarise(totalGasto = sum(valorLíquido)) %>%
+  arrange(totalGasto) %>%
+  slice(1:5)
 
+count(estados, vars='SP')
 ```
