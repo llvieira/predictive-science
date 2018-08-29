@@ -5,11 +5,15 @@ date: "27 de agosto de 2018"
 output: html_document
 ---
 
-## Importando biblioteca e os dados
+## Importando bibliotecas
 
 ```{r}
 library(tidyverse)
 library(gridExtra)
+```
+
+## Lendo os dados
+```{r}
 dados <- readr::read_csv('dadosCEAP.csv')
 dados %>% glimpse()
 ```
@@ -67,6 +71,31 @@ grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 ```
 
 ## Terceira questão
+
+```{r}
+
+```
+
+## Quarta questão
+
+```{r}
+
+```
+
+## Quinta questão
+
+```{r}
+# estados onde os deputados mais gastam com passagens aéreas
+estados <-dados %>% group_by(sgUF) %>%
+  filter(tipoDespesa == 'Emissão Bilhete Aéreo') %>%
+  summarise(totalGasto = sum(valorLíquido)) %>%
+  arrange(totalGasto) %>%
+  slice(1:5)
+
+estados %>% ggplot(aes(x = reorder(sgUF, totalGasto), y = totalGasto, fill = sgUF)) + xlab('Estados') + ylab('Gasto total') + geom_col(width = 0.7) + coord_flip()
+```
+
+## Sexta questão
 
 ```{r}
 
