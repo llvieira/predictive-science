@@ -7,12 +7,15 @@ output: html_document
 
 ## Importando bibliotecas
 
+As bibliotecas usadas nessa análise serão **tidyverse** e **gridExtra**.
+
 ```{r}
 library(tidyverse)
 library(gridExtra)
 ```
 
-## Lendo os dados
+## Importanto os dados
+
 ```{r}
 dados <- readr::read_csv('dadosCEAP.csv')
 dados %>% glimpse()
@@ -23,8 +26,27 @@ limiteMensal %>% glimpse()
 dados %>% full_join(limiteMensal, by = c('sgUF' = 'UF')) -> dados
 ```
 
+Breve descrição das informações disponíveis:
+
+`nomeParlamentar`: Nome adotado pelo Parlamentar ao tomar posse do seu mandato.
+`idCadastro`: Número que identifica unicamente um deputado federal na CD.
+`sgUF`: No contexto da cota CEAP, representa a unidade da federação pela qual o deputado foi eleito e é utilizada para definir o valor da cota a que o deputado tem.
+`sgPartido`: Sigla do partido do parlamentar.
+`tipoDespesa`: O seu conteúdo é a descrição do Tipo de Despesa relativo à despesa em questão.
+`especDespesa`: Representa a descrição  especificação mais detalhada de um referido Tipo de Despesa.
+`fornecedor`: O conteúdo deste dado representa o nome do fornecedor do produto ou serviço presente no documento fiscal.
+`CNPJCPF`: O conteúdo deste dado representa o CNPJ ou o CPF do emitente do documento fiscal, quando se tratar do uso da cota em razão do reembolso despesas comprovadas pela emissão de documentos fiscais.
+`tipoDocumento`: Este dado representa o tipo de documento do fiscal – 0 (Zero), para Nota Fiscal; 1 (um), para Recibo; e 2, para Despesa no Exterior.
+`dataEmissao`: O conteúdo deste dado é a data de emissão do documento fiscal ou a data do documento que tenha dado causa à despesa.
+`valorDocumento`: O seu conteúdo é o valor de face do documento fiscal ou o valor do documento que deu causa à despesa. Quando se tratar de bilhete aéreo, esse valor poderá ser negativo, significando que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado.
+`valorGlosa`: O seu conteúdo representa o valor da glosa do documento fiscal que incidirá sobre o Valor do Documento, ou o valor da glosa do documento que deu causa à despesa.
+`valorLíquido`: O seu conteúdo representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. Caso o débito seja do Tipo Telefonia e o valor seja igual a zero, significa que a despesa foi franqueada.
+`limite_mensal`: Limites de CEAP por estado.
+
+## Removendo notações científicas
+
 ```{r}
-# Removendo notações cientificas e usando apenas decimais
+# Removendo notações cientificas e usando apenas inteiros
 options(scipen = 999)
 ```
 
@@ -127,11 +149,23 @@ estados %>% ggplot(aes(x = reorder(sgUF, totalGasto), y = totalGasto, fill = sgU
 ## Sexta questão
 
 ```{r}
-estados <-dados %>% group_by(sgUF) %>%
-  filter(tipoDespesa == 'Emissão Bilhete Aéreo') %>%
-  summarise(totalGasto = sum(valorLíquido)) %>%
-  arrange(totalGasto) %>%
-  slice(1:5)
+partidos <- dados %>% group_by(sgPartido, tipoDespesa) %>% 
+  filter(sgPartido == 'PT' | sgPartido == 'PMDB' | sgPartido == 'PSOL')
 
-count(estados, vars='SP')
+usoDespesaPorPartido <- count(partidos)
+
+despesasOrdenadasPorUso <- usoDespesaPorPartido %>% group_by(tipoDespesa) %>% 
+  summarise(vezesUsado = sum(n)) %>% 
+  arrange(-vezesUsado) %>% 
+  slice(1:3)
+
+despesasOrdenadasPorGasto <- partidos %>% group_by(tipoDespesa) %>% 
+  summarise(totalGasto = sum(valorLíquido)) %>% 
+  arrange(-totalGasto) %>% 
+  slice(1:3)
+
+despesasOrdenadasPorUso %>% ggplot(aes(x = reorder(tipoDespesa, vezesUsado), y = vezesUsado, fill = tipoDespesa)) + labs(x='Tipo Despesa', y='Quantidade Usada') + geom_col(width = 0.7) + coord_flip()  +guides(fill = guide_legend('Tipo Despesa'))
+
+despesasOrdenadasPorGasto %>% ggplot(aes(x = reorder(tipoDespesa, totalGasto), y = totalGasto, fill = tipoDespesa)) + labs(x='Tipo Despesa', y='Gasto total') + geom_col(width = 0.7) +guides(fill = guide_legend('Tipo Despesa'))
+
 ```
