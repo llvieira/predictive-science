@@ -9,7 +9,7 @@ output: html_document
 
 As bibliotecas usadas nessa análise serão **tidyverse** e **gridExtra**.
 
-```{r}
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(gridExtra)
 ```
@@ -28,19 +28,19 @@ dados %>% full_join(limiteMensal, by = c('sgUF' = 'UF')) -> dados
 
 Breve descrição das informações disponíveis:
 
-`nomeParlamentar`: Nome adotado pelo Parlamentar ao tomar posse do seu mandato.
-`idCadastro`: Número que identifica unicamente um deputado federal na CD.
-`sgUF`: No contexto da cota CEAP, representa a unidade da federação pela qual o deputado foi eleito e é utilizada para definir o valor da cota a que o deputado tem.
-`sgPartido`: Sigla do partido do parlamentar.
-`tipoDespesa`: O seu conteúdo é a descrição do Tipo de Despesa relativo à despesa em questão.
-`especDespesa`: Representa a descrição  especificação mais detalhada de um referido Tipo de Despesa.
-`fornecedor`: O conteúdo deste dado representa o nome do fornecedor do produto ou serviço presente no documento fiscal.
-`CNPJCPF`: O conteúdo deste dado representa o CNPJ ou o CPF do emitente do documento fiscal, quando se tratar do uso da cota em razão do reembolso despesas comprovadas pela emissão de documentos fiscais.
-`tipoDocumento`: Este dado representa o tipo de documento do fiscal – 0 (Zero), para Nota Fiscal; 1 (um), para Recibo; e 2, para Despesa no Exterior.
+`nomeParlamentar`: Nome adotado pelo Parlamentar ao tomar posse do seu mandato.<br/>
+`idCadastro`: Número que identifica unicamente um deputado federal na CD.<br/>
+`sgUF`: No contexto da cota CEAP, representa a unidade da federação pela qual o deputado foi eleito e é utilizada para definir o valor da cota a que o deputado tem.<br/>
+`sgPartido`: Sigla do partido do parlamentar.<br/>
+`tipoDespesa`: O seu conteúdo é a descrição do Tipo de Despesa relativo à despesa em questão.<br/>
+`especDespesa`: Representa a descrição  especificação mais detalhada de um referido Tipo de Despesa.<br/>
+`fornecedor`: O conteúdo deste dado representa o nome do fornecedor do produto ou serviço presente no documento fiscal.<br/>
+`CNPJCPF`: O conteúdo deste dado representa o CNPJ ou o CPF do emitente do documento fiscal, quando se tratar do uso da cota em razão do reembolso despesas comprovadas pela emissão de documentos fiscais.<br/>
+`tipoDocumento`: Este dado representa o tipo de documento do fiscal – 0 (Zero), para Nota Fiscal; 1 (um), para Recibo; e 2, para Despesa no Exterior.<br/>
 `dataEmissao`: O conteúdo deste dado é a data de emissão do documento fiscal ou a data do documento que tenha dado causa à despesa.
-`valorDocumento`: O seu conteúdo é o valor de face do documento fiscal ou o valor do documento que deu causa à despesa. Quando se tratar de bilhete aéreo, esse valor poderá ser negativo, significando que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado.
-`valorGlosa`: O seu conteúdo representa o valor da glosa do documento fiscal que incidirá sobre o Valor do Documento, ou o valor da glosa do documento que deu causa à despesa.
-`valorLíquido`: O seu conteúdo representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. Caso o débito seja do Tipo Telefonia e o valor seja igual a zero, significa que a despesa foi franqueada.
+`valorDocumento`: O seu conteúdo é o valor de face do documento fiscal ou o valor do documento que deu causa à despesa. Quando se tratar de bilhete aéreo, esse valor poderá ser negativo, significando que o referido bilhete é um bilhete de compensação, pois compensa um outro bilhete emitido e não utilizado pelo deputado.<br/>
+`valorGlosa`: O seu conteúdo representa o valor da glosa do documento fiscal que incidirá sobre o Valor do Documento, ou o valor da glosa do documento que deu causa à despesa.<br/>
+`valorLíquido`: O seu conteúdo representa o valor líquido do documento fiscal ou do documento que deu causa à despesa e será calculado pela diferença entre o Valor do Documento e o Valor da Glosa. É este valor que será debitado da cota do deputado. Caso o débito seja do Tipo Telefonia e o valor seja igual a zero, significa que a despesa foi franqueada.<br/>
 `limite_mensal`: Limites de CEAP por estado.
 
 ## Removendo notações científicas
@@ -71,6 +71,7 @@ graficoMenosGastadores <- menosGastadores %>% ggplot(aes(x = reorder(nomeParlame
 
 grid.arrange(graficoMaisGastadores, graficoMenosGastadores, nrow = 2)
 ```
+Quais são os deputados que gastaram mais dinheiro da CEAP? Quais são os mais econômicos?
 
 ## Segunda questão
 
@@ -117,14 +118,23 @@ grid.arrange(graficoEstadosMaisGasto, graficoEstadosMenosGasto, nrow = 2)
 ## Quarta questão
 
 ```{r}
-ultrapassa_limite <- dados %>% group_by(nomeParlamentar, limite_mensal) %>% 
-  summarise(totalGasto = sum(valorLíquido)) %>% 
-  filter(totalGasto > limite_mensal) %>% 
-  arrange(-totalGasto) %>% 
+ultrapassa_limite <- dados %>%
+  mutate(mes = format(dataEmissao , "%m"), ano = format(dataEmissao , "%y")) %>% 
+  group_by(nomeParlamentar, idCadastro, mes, ano) %>% 
+  summarise(totalGasto = sum(valorLíquido), limiteMensal = first(limite_mensal)) %>% 
+  filter(totalGasto > limiteMensal) %>% 
+  mutate(overbudget = totalGasto - limiteMensal) %>% 
+  arrange(overbudget) %>% 
   ungroup() %>% 
-  slice(1:5)
+  slice(0:5)
 
-ultrapassa_limite %>% ggplot(aes(x = reorder(nomeParlamentar, totalGasto), y = totalGasto, fill = nomeParlamentar)) + labs(x='Deputados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Deputados'))
+ultrapassa_limite %>% 
+  ggplot(aes(x = reorder(nomeParlamentar,overbudget), 
+             y = overbudget, fill = nomeParlamentar)) + 
+  labs(x='Deputados', y='Overbudget') + 
+  geom_col() + 
+  coord_flip() + 
+  guides(fill = guide_legend('Deputados'))
 ```
 
 ## Quinta questão
@@ -134,8 +144,7 @@ ultrapassa_limite %>% ggplot(aes(x = reorder(nomeParlamentar, totalGasto), y = t
 estados <-dados %>% group_by(sgUF) %>%
   filter(tipoDespesa == 'Emissão Bilhete Aéreo') %>%
   summarise(totalGasto = sum(valorLíquido)) %>%
-  arrange(-totalGasto) %>%
-  slice(1:5)
+  top_n(5)
 
 estados %>% ggplot(aes(x = reorder(sgUF, totalGasto), y = totalGasto, fill = sgUF)) + labs(x='Estados', y='Gasto total') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Estados'))
 ```
@@ -150,13 +159,17 @@ usoDespesaPorPartido <- count(partidos)
 
 despesasOrdenadasPorUso <- usoDespesaPorPartido %>% group_by(tipoDespesa) %>% 
   summarise(vezesUsado = sum(n)) %>% 
-  arrange(-vezesUsado)
+  arrange(-vezesUsado) %>% 
+  slice(1:5)
 
 despesasOrdenadasPorGasto <- partidos %>% group_by(tipoDespesa) %>% 
   summarise(totalGasto = sum(valorLíquido)) %>% 
-  arrange(-totalGasto)
+  arrange(-totalGasto) %>% 
+  slice(1:5)
 
-despesasOrdenadasPorUso %>% ggplot(aes(x=reorder(tipoDespesa, vezesUsado), y=vezesUsado)) + labs(x = "Tipo da Despesa", y = "Total Gasto")+ geom_point(size=3) + geom_segment(aes(x=tipoDespesa, xend=tipoDespesa, y=0, yend=vezesUsado)) +    labs(title="Despesas que mais utilizadas pelos deputados dos partidos(PT, PMDB, PSOL)", subtitle="Tipo da Despesa Vs Vezes usado", caption="source: dados") + coord_flip()
+graficoDespesasOrdenadasPorUso <- despesasOrdenadasPorUso %>% ggplot(aes(x=reorder(tipoDespesa, vezesUsado), y = vezesUsado, fill = tipoDespesa)) + labs(x='Tipo Despesa', y='Vezes Usado') + geom_col(width = 0.7, show.legend = FALSE) + coord_flip()
 
-despesasOrdenadasPorGasto %>% ggplot(aes(x=reorder(tipoDespesa, totalGasto), y=totalGasto)) + labs(x = "Tipo da Despesa", y = "Total Gasto")+ geom_point(size=3) + geom_segment(aes(x=tipoDespesa, xend=tipoDespesa, y=0, yend=totalGasto)) +    labs(title="Despesas que mais custosas utilizadas pelos deputados dos partidos(PT, PMDB, PSOL)", subtitle="Tipo da Despesa Vs Total Gasto", caption="source: dados") + coord_flip()
+graficoDespesasOrdenadasPorGasto <- despesasOrdenadasPorGasto %>% ggplot(aes(x=reorder(tipoDespesa, totalGasto), y = totalGasto, fill = tipoDespesa)) + labs(x='Tipo Despesa', y='Total Gasto') + geom_col(width = 0.7, show.legend = FALSE) + coord_flip()
+
+grid.arrange(graficoDespesasOrdenadasPorUso, graficoDespesasOrdenadasPorGasto, nrow = 2)
 ```
