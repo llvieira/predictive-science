@@ -1,0 +1,43 @@
+---
+title: "predictive-science"
+author: "Lucas Vieira"
+date: "27 de agosto de 2018"
+output: html_document
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+# Análise de Gastos de Deputados
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(gridExtra)
+```
+
+```{r}
+dados <- readr::read_csv('dadosCEAP.csv')
+
+limiteMensal <- readr::read_csv('limiteMensalCEAP.csv')
+
+dados %>% full_join(limiteMensal, by = c('sgUF' = 'UF')) -> dados
+options(scipen = 999)
+```
+
+## Primeira questão
+
+### Para cada estado brasileiro, qual o top 1 dos deputados mais gastadores? (não necessariamente passou do limite)
+
+```{r}
+maisGastadores <- dados %>% group_by(nomeParlamentar, idCadastro, sgUF) %>% 
+  filter(valorLíquido > 0) %>%
+  summarise(totalDeGastos = sum(valorLíquido)) %>% 
+  ungroup()
+
+maisGastadoresPorEstado <- maisGastadores %>% group_by(sgUF) %>% top_n(1, wt = totalDeGastos) %>% na.omit()
+
+maisGastadoresPorEstado %>% ggplot(aes(x = reorder(nomeParlamentar, totalDeGastos), y=totalDeGastos, fill=sgUF)) + labs(x='Estados', y='Gasto total', title = 'Estados vs Gastos no exterior') + geom_col(width = 0.7) + coord_flip() + guides(fill = guide_legend('Estados'))
+
+```
