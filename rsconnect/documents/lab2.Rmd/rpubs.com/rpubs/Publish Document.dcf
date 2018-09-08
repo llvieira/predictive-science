@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/417789/bf3a39222af9459b898856d644dbd9f0
+bundleId: https://api.rpubs.com/api/v1/document/417789/bf3a39222af9459b898856d644dbd9f0
+url: http://rpubs.com/llvieira/417789
+when: 1536374269.23551
